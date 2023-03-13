@@ -9,6 +9,7 @@ https://arxiv.org/abs/2303.03667
 
 from collections import OrderedDict
 from functools import partial
+from typing import List 
 
 import torch
 import torch.nn as nn
@@ -161,12 +162,13 @@ class FasterNet(nn.Module):
         self.feature_channels = inner_channels
         
         
-    def forward_feature(self, x: Tensor) -> Tensor:
+    def forward_feature(self, x: Tensor) -> List[Tensor]:
         x1 = self.stage1(self.embedding(x))
         x2 = self.stage2(self.merging1(x1))
         x3 = self.stage3(self.merging2(x2))
         x4 = self.stage4(self.merging3(x3))
         return [x1, x2, x3, x4]
+    
     
     def forward(self, x: Tensor) -> Tensor:
         _, _, _, x = self.forward_feature(x)
@@ -201,7 +203,7 @@ if __name__ == "__main__":
     model = model.to(device)
     model.eval()
     
-    x = torch.randn((1, 3, 244, 244), device=device)
+    x = torch.randn((1, 3, 224, 224), device=device)
     st = time.time()
     test_round = 100
     for i in range(test_round):
