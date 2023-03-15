@@ -9,7 +9,7 @@ https://arxiv.org/abs/2303.03667
 
 from collections import OrderedDict
 from functools import partial
-from typing import List 
+from typing import List
 
 import torch
 import torch.nn as nn
@@ -39,7 +39,21 @@ class ConvBNLayer(nn.Module):
                               bias=bias)
         self.bn = nn.BatchNorm2d(out_channels)
         self.act = getattr(nn, act)()
-        
+     
+    def _fuse_bn_tensor(self) -> None:
+        kernel = self.conv.weight 
+        bias = self.conv.bias if hasattr(self.conv, 'bias') and self.conv.bias is not None else 0
+        running_mean = self.bn.running_mean
+        running_var = self.bn.running_var 
+        gamma = self.bn.weight
+        beta = self.bn.bias
+        eps = self.bn.eps 
+        std = (running_var + eps).sqrt()
+        t = (gamma / std).reshape(-1, 1, 1, 1)
+        self.conv.weight.data = kernel * t 
+        self.conv.bias = nn.Parameter(beta - (running_mean - bias) * gamma / std)
+        self.bn = nn.Identity()
+        return self.conv.weight.data, self.conv.bias.data 
         
     def forward(self, x: Tensor) -> Tensor:
         x = self.conv(x)
@@ -74,7 +88,7 @@ class FasterNetBlock(nn.Module):
                                kernel_size=1,
                                stride=1,
                                bias=True)
-        
+ 
     def forward(self, x: Tensor) -> Tensor:
         y = self.conv1(x)
         y = self.conv2(y)
@@ -160,6 +174,13 @@ class FasterNet(nn.Module):
             ('fc', nn.Conv2d(last_channels, out_channels, kernel_size=1, bias=True))
         ]))
         self.feature_channels = inner_channels
+    
+    
+    def fuse_bn_tensor(self):
+        for m in self.modules():
+            if isinstance(m, ConvBNLayer):
+                m._fuse_bn_tensor()
+        
         
         
     def forward_feature(self, x: Tensor) -> List[Tensor]:
@@ -194,16 +215,23 @@ FasterNetL = partial(FasterNet, inner_channels=[192, 384, 768, 1536], blocks=[3,
 if __name__ == "__main__":
     import time 
     device = torch.device("cpu")
-    conv = ConvBNLayer(3, 40, 4, 4, bias=False, act='GELU')
-    print(conv)
-    block = FasterNetBlock(40, act='GELU')
-    print(block)
+    
     model = FasterNetL()
-    print(model)
+    
     model = model.to(device)
+    print(model)
     model.eval()
     
     x = torch.randn((1, 3, 224, 224), device=device)
+    y1 = model(x)
+    
+    model.fuse_bn_tensor()
+    y2 = model(x)
+    
+    print(y1.squeeze())
+    print(y2.squeeze())
+    print(torch.norm(y1 - y2))
+    
     st = time.time()
     test_round = 100
     for i in range(test_round):
