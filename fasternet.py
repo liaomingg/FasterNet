@@ -14,6 +14,7 @@ from typing import List
 import torch
 import torch.nn as nn
 from torch import Tensor
+from timm.models.layers import DropPath
 
 from pconv import PConv2d
 
@@ -51,7 +52,7 @@ class ConvBNLayer(nn.Module):
         std = (running_var + eps).sqrt()
         t = (gamma / std).reshape(-1, 1, 1, 1)
         self.conv.weight.data = kernel * t 
-        self.conv.bias = nn.Parameter(beta - (running_mean - bias) * gamma / std)
+        self.conv.bias = nn.Parameter(beta - (running_mean - bias) * gamma / std, requires_grad=False)
         self.bn = nn.Identity()
         return self.conv.weight.data, self.conv.bias.data 
         
@@ -72,6 +73,7 @@ class FasterNetBlock(nn.Module):
                  act: str = 'ReLU',
                  n_div:int = 4,
                  forward: str = 'split_cat',
+                 drop_path: float = 0.,
                  ):
         super(FasterNetBlock, self).__init__()
         inner_channels = inner_channels or in_channels * 2
@@ -88,13 +90,14 @@ class FasterNetBlock(nn.Module):
                                kernel_size=1,
                                stride=1,
                                bias=True)
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
  
     def forward(self, x: Tensor) -> Tensor:
         y = self.conv1(x)
         y = self.conv2(y)
         y = self.conv3(y)
         
-        return x + y 
+        return x + self.drop_path(y) 
 
 
 
@@ -109,6 +112,7 @@ class FasterNet(nn.Module):
                  act='ReLU',
                  n_div = 4,
                  forward = 'slicing',
+                 drop_path = 0.,
                  ):
         super(FasterNet, self).__init__()
         self.embedding = ConvBNLayer(in_channels,
@@ -123,7 +127,8 @@ class FasterNet(nn.Module):
                                 bias=bias,
                                 act=act,
                                 n_div=n_div,
-                                forward=forward)) for idx in range(blocks[0])]))
+                                forward=forward,
+                                drop_path=drop_path)) for idx in range(blocks[0])]))
 
         self.merging1 = ConvBNLayer(inner_channels[0],
                                 inner_channels[1],
@@ -137,7 +142,8 @@ class FasterNet(nn.Module):
                                 bias=bias,
                                 act=act,
                                 n_div=n_div,
-                                forward=forward)) for idx in range(blocks[1])]))
+                                forward=forward,
+                                drop_path=drop_path)) for idx in range(blocks[1])]))
 
         self.merging2 = ConvBNLayer(inner_channels[1],
                                 inner_channels[2],
@@ -151,7 +157,8 @@ class FasterNet(nn.Module):
                                 bias=bias,
                                 act=act,
                                 n_div=n_div,
-                                forward=forward)) for idx in range(blocks[2])]))
+                                forward=forward,
+                                drop_path=drop_path)) for idx in range(blocks[2])]))
 
         self.merging3 = ConvBNLayer(inner_channels[2],
                                 inner_channels[3],
@@ -165,7 +172,8 @@ class FasterNet(nn.Module):
                                 bias=bias,
                                 act=act,
                                 n_div=n_div,
-                                forward=forward)) for idx in range(blocks[3])]))
+                                forward=forward,
+                                drop_path=drop_path)) for idx in range(blocks[3])]))
 
         self.classifier = nn.Sequential(OrderedDict([
             ('global_average_pooling', nn.AdaptiveAvgPool2d(1)),
@@ -216,7 +224,7 @@ if __name__ == "__main__":
     import time 
     device = torch.device("cpu")
     
-    model = FasterNetL()
+    model = FasterNetL(drop_path = 0.1)
     
     model = model.to(device)
     print(model)
