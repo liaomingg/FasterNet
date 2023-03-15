@@ -210,7 +210,7 @@ FasterNetT0 = partial(FasterNet, inner_channels=[40, 80, 160, 320], blocks=[1, 2
 
 FasterNetT1 = partial(FasterNet, inner_channels=[64, 128, 256, 512], blocks=[1, 2, 8, 2], act='GELU', drop_path=0.02)
 
-FasterNetT2 = partial(FasterNet, inner_channels=[96, 192, 384, 768], blocks=[1, 2, 8, 2], act='ReLU', drop_path=0.5)
+FasterNetT2 = partial(FasterNet, inner_channels=[96, 192, 384, 768], blocks=[1, 2, 8, 2], act='ReLU', drop_path=0.05)
 
 FasterNetS = partial(FasterNet, inner_channels=[128, 256, 512, 1024], blocks=[1, 2, 13, 2], act='ReLU', drop_path=0.1)
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     import time 
     device = torch.device("cpu")
     
-    model = FasterNetL(drop_path = 0.0)
+    model = FasterNetL(drop_path=0.)
     
     model = model.to(device)
     print(model)
