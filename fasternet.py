@@ -206,17 +206,17 @@ class FasterNet(nn.Module):
         return x 
         
         
-FasterNetT0 = partial(FasterNet, inner_channels=[40, 80, 160, 320], blocks=[1, 2, 8, 2], act='GELU')
+FasterNetT0 = partial(FasterNet, inner_channels=[40, 80, 160, 320], blocks=[1, 2, 8, 2], act='GELU', drop_path=0.)
 
-FasterNetT1 = partial(FasterNet, inner_channels=[64, 128, 256, 512], blocks=[1, 2, 8, 2], act='GELU')
+FasterNetT1 = partial(FasterNet, inner_channels=[64, 128, 256, 512], blocks=[1, 2, 8, 2], act='GELU', drop_path=0.02)
 
-FasterNetT2 = partial(FasterNet, inner_channels=[96, 192, 384, 768], blocks=[1, 2, 8, 2], act='ReLU')
+FasterNetT2 = partial(FasterNet, inner_channels=[96, 192, 384, 768], blocks=[1, 2, 8, 2], act='ReLU', drop_path=0.5)
 
-FasterNetS = partial(FasterNet, inner_channels=[128, 256, 512, 1024], blocks=[1, 2, 13, 2], act='ReLU')
+FasterNetS = partial(FasterNet, inner_channels=[128, 256, 512, 1024], blocks=[1, 2, 13, 2], act='ReLU', drop_path=0.1)
 
-FasterNetM = partial(FasterNet, inner_channels=[144, 288, 576, 1152], blocks=[3, 4, 18, 3], act='ReLU')
+FasterNetM = partial(FasterNet, inner_channels=[144, 288, 576, 1152], blocks=[3, 4, 18, 3], act='ReLU', drop_path=0.2)
 
-FasterNetL = partial(FasterNet, inner_channels=[192, 384, 768, 1536], blocks=[3, 4, 18, 3], act='ReLU')
+FasterNetL = partial(FasterNet, inner_channels=[192, 384, 768, 1536], blocks=[3, 4, 18, 3], act='ReLU', drop_path=0.3)
 
 
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     import time 
     device = torch.device("cpu")
     
-    model = FasterNetL(drop_path = 0.1)
+    model = FasterNetL(drop_path = 0.0)
     
     model = model.to(device)
     print(model)
