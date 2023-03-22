@@ -89,7 +89,7 @@ class FasterNetBlock(nn.Module):
                                in_channels,
                                kernel_size=1,
                                stride=1,
-                               bias=True)
+                               bias=False)
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
  
     def forward(self, x: Tensor) -> Tensor:
@@ -122,7 +122,7 @@ class FasterNet(nn.Module):
                                      bias=bias)
         
         self.stage1 = nn.Sequential(OrderedDict([
-                ('conv{}'.format(idx), 
+                ('block{}'.format(idx), 
                  FasterNetBlock(inner_channels[0],
                                 bias=bias,
                                 act=act,
@@ -137,7 +137,7 @@ class FasterNet(nn.Module):
                                 bias=bias)
         
         self.stage2 = nn.Sequential(OrderedDict([
-                ('conv{}'.format(idx), 
+                ('block{}'.format(idx), 
                  FasterNetBlock(inner_channels[1],
                                 bias=bias,
                                 act=act,
@@ -152,7 +152,7 @@ class FasterNet(nn.Module):
                                 bias=bias)
         
         self.stage3 = nn.Sequential(OrderedDict([
-                ('conv{}'.format(idx), 
+                ('block{}'.format(idx), 
                  FasterNetBlock(inner_channels[2],
                                 bias=bias,
                                 act=act,
@@ -167,7 +167,7 @@ class FasterNet(nn.Module):
                                 bias=bias)
         
         self.stage4 = nn.Sequential(OrderedDict([
-                ('conv{}'.format(idx), 
+                ('block{}'.format(idx), 
                  FasterNetBlock(inner_channels[3],
                                 bias=bias,
                                 act=act,
@@ -177,9 +177,10 @@ class FasterNet(nn.Module):
 
         self.classifier = nn.Sequential(OrderedDict([
             ('global_average_pooling', nn.AdaptiveAvgPool2d(1)),
-            ('conv', nn.Conv2d(inner_channels[-1], last_channels, kernel_size=1, bias=True)),
+            ('conv', nn.Conv2d(inner_channels[-1], last_channels, kernel_size=1, bias=False)),
             ('act', getattr(nn, act)()),
-            ('fc', nn.Conv2d(last_channels, out_channels, kernel_size=1, bias=True))
+            ('flat', nn.Flatten()),
+            ('fc', nn.Linear(last_channels, out_channels, bias=True))
         ]))
         self.feature_channels = inner_channels
     
@@ -236,8 +237,8 @@ if __name__ == "__main__":
     model.fuse_bn_tensor()
     y2 = model(x)
     
-    print(y1.squeeze())
-    print(y2.squeeze())
+    print(y1)
+    print(y2)
     print(torch.norm(y1 - y2))
     
     st = time.time()
